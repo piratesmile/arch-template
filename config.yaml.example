@@ -1,0 +1,12 @@
+app:
+  host: 127.0.0.1:8998
+  env: dev # dev / pro
+database:
+  driver: mysql
+  source: root:root@tcp(mysql:3306)/dbname?parseTime=True&charset=utf8mb4&loc=Local
+log:
+  level: debug
+  log-files: stdout
+  err-files: stderr
+  file-age: 0
+  file-size: 100  # unit:MB, the default value is 100MB
