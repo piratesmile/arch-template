@@ -13,7 +13,7 @@ type ErrorResponse struct {
 	Message string       `json:"message"`
 }
 
-func Response(ctx *gin.Context, httpCode int, data interface{}) {
+func Respond(ctx *gin.Context, httpCode int, data interface{}) {
 	if data == nil {
 		ctx.Status(httpCode)
 	} else {
@@ -22,23 +22,23 @@ func Response(ctx *gin.Context, httpCode int, data interface{}) {
 }
 
 func Success(ctx *gin.Context, data interface{}) {
-	Response(ctx, http.StatusOK, data)
+	Respond(ctx, http.StatusOK, data)
 }
 
 func InternalServerError(ctx *gin.Context) {
-	Response(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	Respond(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 }
 
 func Error(ctx *gin.Context, err error) {
 	if err == nil {
-		Response(ctx, http.StatusOK, nil)
+		Respond(ctx, http.StatusOK, nil)
 		return
 	}
 	httpCode, bizCode, message := errdefs.Decode(err)
 
 	if httpCode == http.StatusInternalServerError {
 		// log error message if occur internal server error
-		tlog.Error(ctx, "internal server error", tlog.Fields{"err": err})
+		tlog.FromContext(ctx).Errorw("internal server error", "err", err)
 	}
-	Response(ctx, httpCode, ErrorResponse{bizCode, message})
+	Respond(ctx, httpCode, ErrorResponse{bizCode, message})
 }

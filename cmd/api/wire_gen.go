@@ -23,21 +23,22 @@ import (
 // Injectors from wire.go:
 
 func newServer(c *configs.Config) *app.Server {
+	sugaredLogger := newLogger(c)
 	client := newDB(c)
 	tokenManager := newTokenManager(c)
-	entRepository := public.NewBaseRepository(client)
+	entRepository := public.NewBaseStore(client)
 	repository := user.NewRepository(entRepository)
 	userFetcher := newUserFetcher(repository)
-	provider := middleware.New(c, tokenManager, userFetcher)
+	provider := middleware.New(c, tokenManager, userFetcher, sugaredLogger)
 	service := user.NewService(repository, tokenManager)
 	handler := user.NewHandler(service)
 	httpHandler := app.NewRouter(provider, handler)
-	server := app.NewServer(c, client, httpHandler)
+	server := app.NewServer(c, sugaredLogger, client, httpHandler)
 	return server
 }
 
 // wire.go:
 
-var baseSet = wire.NewSet(public.NewBaseRepository)
+var baseSet = wire.NewSet(public.NewBaseStore)
 
 var moduleSet = wire.NewSet(user.NewHandler, user.NewService, user.NewRepository)

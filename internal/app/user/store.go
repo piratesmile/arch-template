@@ -9,23 +9,23 @@ import (
 	"context"
 )
 
-type Repository struct {
-	*public.EntRepository
+type Store struct {
+	*public.EntStore
 }
 
-func NewRepository(baseRepository *public.EntRepository) *Repository {
-	return &Repository{EntRepository: baseRepository}
+func NewRepository(baseStore *public.EntStore) *Store {
+	return &Store{EntStore: baseStore}
 }
 
-func (u *Repository) FetchByID(ctx context.Context, id uint) (*entity.User, error) {
+func (u *Store) FetchByID(ctx context.Context, id uint) (*entity.User, error) {
 	return u.only(ctx, user.ID(id))
 }
 
-func (u *Repository) FetchByUserName(ctx context.Context, username string) (*entity.User, error) {
+func (u *Store) FetchByUserName(ctx context.Context, username string) (*entity.User, error) {
 	return u.only(ctx, user.Username(username))
 }
 
-func (u *Repository) Create(ctx context.Context, user *entity.User) error {
+func (u *Store) Create(ctx context.Context, user *entity.User) error {
 	userM, err := u.Client(ctx).User.
 		Create().
 		SetUsername(user.UserName).
@@ -38,7 +38,7 @@ func (u *Repository) Create(ctx context.Context, user *entity.User) error {
 	return nil
 }
 
-func (u *Repository) only(ctx context.Context, conditions ...predicate.User) (*entity.User, error) {
+func (u *Store) only(ctx context.Context, conditions ...predicate.User) (*entity.User, error) {
 	entUser, err := u.Client(ctx).User.Query().Where(conditions...).Only(ctx)
 	if err != nil {
 		return nil, public.ReplaceEntNotFoundError(err, errdefs.ErrResourceNotFound)
@@ -46,7 +46,7 @@ func (u *Repository) only(ctx context.Context, conditions ...predicate.User) (*e
 	return entity.UserFromEntModel(entUser), nil
 }
 
-func (u *Repository) all(ctx context.Context, conditions ...predicate.User) ([]*entity.User, error) {
+func (u *Store) all(ctx context.Context, conditions ...predicate.User) ([]*entity.User, error) {
 	list, err := u.Client(ctx).User.Query().Where(conditions...).All(ctx)
 	if err != nil {
 		return nil, err

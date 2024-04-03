@@ -15,7 +15,7 @@ func NewRouter(
 	userHandler *user.Handler,
 ) http.Handler {
 	r := gin.Default()
-	r.Use(cors.Default(), mw.RequestID(), mw.DebugLog())
+	r.Use(cors.Default(), mw.RequestID(), mw.PopulateLogger())
 	pprof.Register(r, "/debug")
 
 	userHandler.RegisterRouter(r, mw)

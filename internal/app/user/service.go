@@ -9,12 +9,12 @@ import (
 )
 
 type Service struct {
-	repo       *Repository
+	store      *Store
 	tokenMaker auth.TokenManager
 }
 
-func NewService(repo *Repository, tokenMaker auth.TokenManager) *Service {
-	return &Service{repo: repo, tokenMaker: tokenMaker}
+func NewService(repo *Store, tokenMaker auth.TokenManager) *Service {
+	return &Service{store: repo, tokenMaker: tokenMaker}
 }
 
 type LoginReq struct {
@@ -28,7 +28,7 @@ type LoginResp struct {
 }
 
 func (s *Service) Login(ctx context.Context, request LoginReq) (resp LoginResp, err error) {
-	user, err := s.repo.FetchByUserName(ctx, request.Username)
+	user, err := s.store.FetchByUserName(ctx, request.Username)
 	if err != nil {
 		return
 	}
@@ -68,12 +68,12 @@ func (s *Service) Register(ctx context.Context, req RegisterReq) (resp RegisterR
 		UserName: req.Username,
 		Password: hashPassword,
 	}
-	err = s.repo.Create(ctx, &user)
+	err = s.store.Create(ctx, &user)
 	return
 }
 
 func (s *Service) userExists(ctx context.Context, username string) (bool, error) {
-	user, err := s.repo.FetchByUserName(ctx, username)
+	user, err := s.store.FetchByUserName(ctx, username)
 	if err != nil && !errors.Is(err, errdefs.ErrResourceNotFound) {
 		return false, err
 	}

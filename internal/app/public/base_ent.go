@@ -6,22 +6,29 @@ import (
 	"fmt"
 )
 
-type EntRepository struct {
+func ReplaceEntNotFoundError(err error, replace error) error {
+	if ent.IsNotFound(err) {
+		return replace
+	}
+	return err
+}
+
+type EntStore struct {
 	entClient *ent.Client
 }
 
-func NewBaseRepository(client *ent.Client) *EntRepository {
-	return &EntRepository{entClient: client}
+func NewBaseStore(client *ent.Client) *EntStore {
+	return &EntStore{entClient: client}
 }
 
-func (b *EntRepository) Client(ctx context.Context) *ent.Client {
+func (b *EntStore) Client(ctx context.Context) *ent.Client {
 	if tx := ent.TxFromContext(ctx); tx != nil {
 		return tx.Client()
 	}
 	return b.entClient
 }
 
-func (b *EntRepository) Tx(ctx context.Context, fn func(context.Context) error) error {
+func (b *EntStore) Tx(ctx context.Context, fn func(context.Context) error) error {
 	if ent.TxFromContext(ctx) != nil {
 		return fn(ctx)
 	}

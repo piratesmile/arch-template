@@ -3,23 +3,26 @@ package app
 import (
 	"arch-template/configs"
 	"arch-template/ent"
-	"arch-template/pkg/tlog"
 	"context"
 	"errors"
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type Server struct {
 	conf      *configs.Config
 	orm       *ent.Client
 	apiServer *http.Server
+	logger    *zap.SugaredLogger
 }
 
-func NewServer(config *configs.Config, orm *ent.Client, handler http.Handler) *Server {
+func NewServer(config *configs.Config, logger *zap.SugaredLogger, orm *ent.Client, handler http.Handler) *Server {
 	return &Server{
-		conf: config,
-		orm:  orm,
+		conf:   config,
+		logger: logger,
+		orm:    orm,
 		apiServer: &http.Server{
 			Addr:    config.APP.Host,
 			Handler: handler,
@@ -28,10 +31,10 @@ func NewServer(config *configs.Config, orm *ent.Client, handler http.Handler) *S
 }
 
 func (s *Server) Run() {
-	tlog.Info(context.Background(), "Start to listening http server", tlog.Fields{"addr": s.apiServer.Addr})
+	s.logger.Infow("Start to listening http server", "addr", s.apiServer.Addr)
 	go func() {
 		if err := s.apiServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			tlog.Panic(context.Background(), "HTTP server listen failed", tlog.Fields{"err": err})
+			s.logger.Panicw("HTTP server listen failed", "err", err)
 		}
 	}()
 }
@@ -41,10 +44,10 @@ func (s *Server) Stop() {
 	defer cancel()
 
 	if err := s.apiServer.Shutdown(ctx); err != nil {
-		tlog.Error(ctx, "shutdown api server failed", tlog.Fields{"err": err})
+		s.logger.Errorw("shutdown api server failed", "err", err)
 	}
 
 	if err := s.orm.Close(); err != nil {
-		tlog.Error(ctx, "close db orm failed", tlog.Fields{"err": err})
+		s.logger.Errorw("close db orm failed", "err", err)
 	}
 }

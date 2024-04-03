@@ -14,7 +14,7 @@ import (
 )
 
 var baseSet = wire.NewSet(
-	public.NewBaseRepository,
+	public.NewBaseStore,
 )
 
 var moduleSet = wire.NewSet(
@@ -28,6 +28,7 @@ func newServer(c *configs.Config) *app.Server {
 		newUserFetcher,
 		newTokenManager,
 		newDB,
+		newLogger,
 		middleware.New,
 		app.NewRouter,
 		app.NewServer,

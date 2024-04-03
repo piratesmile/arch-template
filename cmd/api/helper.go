@@ -7,6 +7,8 @@ import (
 	"arch-template/internal/app/user"
 	"arch-template/pkg/auth"
 	"arch-template/pkg/tlog"
+
+	"go.uber.org/zap"
 )
 
 func logOptions(conf configs.Log) *tlog.Options {
@@ -23,8 +25,12 @@ func newTokenManager(config *configs.Config) auth.TokenManager {
 	return auth.NewJWT(config.Auth.SecretKey, config.Auth.Expiration)
 }
 
-func newUserFetcher(repo *user.Repository) middleware.UserFetcher {
+func newUserFetcher(repo *user.Store) middleware.UserFetcher {
 	return repo
+}
+
+func newLogger(config *configs.Config) *zap.SugaredLogger {
+	return tlog.NewZapLogger(logOptions(config.Log))
 }
 
 func newDB(config *configs.Config) *ent.Client {

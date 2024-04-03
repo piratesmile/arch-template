@@ -9,29 +9,32 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var _ Logger = (*zapLogger)(nil)
+const loggerKey = "ctx-logger"
 
 var (
-	once sync.Once
-	std  Logger
+	// defaultLogger is the default logger. It is initialized once per package
+	// include upon calling DefaultLogger.
+	defaultLogger     *zap.SugaredLogger
+	defaultLoggerOnce sync.Once
 )
 
-func Init(opt *Options) {
-	once.Do(func() {
-		std = NewZapLogger(opt)
-		// 使用全局 logger 记录日志，caller 需要再加一层
-		stdLogger, ok := std.(*zapLogger)
-		if ok {
-			stdLogger.logger = stdLogger.logger.WithOptions(zap.AddCallerSkip(1))
-		}
-	})
+var encoderConfig = zapcore.EncoderConfig{
+	TimeKey:       "timestamp",
+	LevelKey:      "level",
+	NameKey:       "logger",
+	CallerKey:     "caller",
+	MessageKey:    "message",
+	StacktraceKey: "stacktrace",
+	LineEnding:    zapcore.DefaultLineEnding,
+	EncodeLevel:   zapcore.LowercaseLevelEncoder,
+	EncodeTime: func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format(time.DateTime))
+	},
+	EncodeDuration: zapcore.SecondsDurationEncoder,
+	EncodeCaller:   zapcore.ShortCallerEncoder,
 }
 
-type zapLogger struct {
-	logger *zap.Logger
-}
-
-func NewZapLogger(opt *Options) Logger {
+func NewZapLogger(opt *Options) *zap.SugaredLogger {
 	if opt == nil {
 		opt = defaultOptions
 	}
@@ -39,73 +42,38 @@ func NewZapLogger(opt *Options) Logger {
 	if err != nil {
 		level = zap.NewAtomicLevel()
 	}
-	encoderConfig := zap.NewProductionEncoderConfig()
-
-	encoderConfig.EncodeTime = func(time time.Time, encoder zapcore.PrimitiveArrayEncoder) {
-		encoder.AppendString(time.Format("2006-01-02 15:04:05.999"))
-	}
 	writeSyncer, errWriter := opt.newWriteSyncer()
 
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderConfig), writeSyncer, level)
 
 	logger := zap.New(core,
 		zap.AddStacktrace(zap.PanicLevel),
-		zap.AddCallerSkip(1),
 		zap.ErrorOutput(errWriter),
 		zap.WithCaller(true),
 	)
 	zap.RedirectStdLog(logger)
 
-	return &zapLogger{logger: logger}
+	return logger.Sugar()
 }
 
-func (z *zapLogger) Debug(ctx context.Context, msg string, fields Fields) {
-	z.logger.Debug(msg, getFields(ctx, fields)...)
+// DefaultLogger returns the default logger for the package.
+func DefaultLogger() *zap.SugaredLogger {
+	defaultLoggerOnce.Do(func() {
+		defaultLogger = NewZapLogger(defaultOptions)
+	})
+	return defaultLogger
 }
 
-func (z *zapLogger) Info(ctx context.Context, msg string, fields Fields) {
-	z.logger.Info(msg, getFields(ctx, fields)...)
+// WithLogger creates a new context with the provided logger attached.
+func WithLogger(ctx context.Context, logger *zap.SugaredLogger) context.Context {
+	return context.WithValue(ctx, loggerKey, logger)
 }
 
-func (z *zapLogger) Warn(ctx context.Context, msg string, fields Fields) {
-	z.logger.Warn(msg, getFields(ctx, fields)...)
-}
-
-func (z *zapLogger) Error(ctx context.Context, msg string, fields Fields) {
-	z.logger.Error(msg, getFields(ctx, fields)...)
-}
-
-func (z *zapLogger) Panic(ctx context.Context, msg string, fields Fields) {
-	z.logger.Panic(msg, getFields(ctx, fields)...)
-}
-
-func (z *zapLogger) Fatal(ctx context.Context, msg string, fields Fields) {
-	z.logger.Fatal(msg, getFields(ctx, fields)...)
-}
-
-func (z *zapLogger) Sync() error {
-	return z.logger.Sync()
-}
-
-func getFields(ctx context.Context, fields Fields) []zap.Field {
-	if fields == nil {
-		fields = Fields{}
+// FromContext returns the logger stored in the context. If no such logger
+// exists, a default logger is returned.
+func FromContext(ctx context.Context) *zap.SugaredLogger {
+	if logger, ok := ctx.Value(loggerKey).(*zap.SugaredLogger); ok {
+		return logger
 	}
-	fillFieldsFromContext(ctx, fields)
-
-	var zapFields = make([]zap.Field, 0, len(fields))
-	for k, v := range fields {
-		zapFields = append(zapFields, zap.Any(k, v))
-	}
-
-	return zapFields
-}
-
-func fillFieldsFromContext(ctx context.Context, fields Fields) {
-	if requestID, ok := ctx.Value("X-Request-ID").(string); ok {
-		fields["requestID"] = requestID
-	}
-	if url, ok := ctx.Value("url").(string); ok {
-		fields["url"] = url
-	}
+	return DefaultLogger()
 }

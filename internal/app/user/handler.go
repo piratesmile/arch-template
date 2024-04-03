@@ -2,7 +2,6 @@ package user
 
 import (
 	"arch-template/internal/app/middleware"
-	"arch-template/internal/app/public"
 	"arch-template/pkg/errdefs"
 	"arch-template/pkg/response"
 
@@ -41,7 +40,7 @@ func (u *Handler) Login(ctx *gin.Context) {
 }
 
 func (u *Handler) Profile(ctx *gin.Context) {
-	auth, err := public.AuthModelFromContext(ctx)
+	auth, err := middleware.UserFromContext(ctx)
 	if err != nil {
 		response.Error(ctx, err)
 		return

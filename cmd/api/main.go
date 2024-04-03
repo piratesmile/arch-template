@@ -4,7 +4,6 @@ import (
 	"arch-template/configs"
 	_ "arch-template/ent/runtime"
 	"arch-template/pkg/tlog"
-	"context"
 	"os"
 	"os/signal"
 
@@ -46,9 +45,6 @@ func run(configFile string) error {
 	if err != nil {
 		return err
 	}
-	// init log
-	tlog.Init(logOptions(conf.Log))
-	defer tlog.Sync()
 
 	// init router
 	gin.SetMode(ginMode(conf.APP.Env))
@@ -59,7 +55,8 @@ func run(configFile string) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	tlog.Info(context.Background(), "Shutdown server", nil)
+
+	tlog.DefaultLogger().Info("Shutdown server")
 
 	server.Stop()
 	return nil
